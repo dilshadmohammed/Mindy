@@ -13,3 +13,8 @@ def create_user(db: Session, email: str, name: str, sub: str, picture: str):
     db.commit()
     db.refresh(new_user)
     return new_user
+
+def get_by_sub_or_email(db: Session, sub: str):
+    return db.query(models.User).filter(
+        (models.User.sub == sub) | (models.User.email == sub)
+    ).first()

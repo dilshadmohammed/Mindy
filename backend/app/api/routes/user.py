@@ -8,6 +8,10 @@ import httpx
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from urllib.parse import urlencode
+from app.core.security import create_access_token, decode_access_token
+from app import schemas
+from fastapi import Header
+
 
 router = APIRouter()
 
@@ -28,7 +32,7 @@ def google_login():
         "prompt": "consent"
     }
     url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
-    return RedirectResponse(url)
+    return {"auth_url": url}
 
 @router.get("/google/callback")
 async def google_callback(code: str, db: Session = Depends(deps.get_db)):
@@ -49,20 +53,47 @@ async def google_callback(code: str, db: Session = Depends(deps.get_db)):
 
     try:
         id_info = id_token.verify_oauth2_token(id_token_str, google_requests.Request(), settings.GOOGLE_CLIENT_ID)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid Google token")
 
-
-    # id_info now contains user data
     email = id_info["email"]
     name = id_info.get("name", "")
-    sub = id_info.get("sub","")
-    picture = id_info.get("picture","")
+    sub = id_info.get("sub", "")
+    picture = id_info.get("picture", "")
 
-    # Get or create user
     user = crud.user.get_by_email(db, email=email)
     if not user:
         user = crud.user.create_user(db, email=email, name=name, sub=sub, picture=picture)
 
-    # For demo, return user info
-    return user
+    access_token = create_access_token({"sub": user.sub or user.email})
+
+    # Redirect to frontend with token in URL fragment for localStorage
+    redirect_url = f"http://localhost:5173/oauth-callback#access_token={access_token}"
+    return RedirectResponse(url=redirect_url)
+
+
+@router.get("/profile", response_model=schemas.User)
+def get_profile(current_user: models.User = Depends(deps.get_current_user)):
+    return current_user
+
+@router.get("/verify-access-token")
+def verify_access_token(
+    db: Session = Depends(deps.get_db),
+    authorization: str = Header(None)
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing Authorization header")
+    token = authorization.split(" ")[1]
+    try:
+        payload = decode_access_token(token)
+        sub = payload.get("sub")
+        if not sub:
+            raise HTTPException(status_code=400, detail="Invalid token payload")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid access token")
+
+    user = crud.user.get_by_sub_or_email(db, sub=sub)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"email": user.email, "name": user.name, "sub": user.sub, "picture": user.picture}
