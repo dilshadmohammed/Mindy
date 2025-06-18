@@ -1,4 +1,4 @@
-from pydantic.v1 import BaseSettings
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DATABASE_URL: str
@@ -6,8 +6,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
+    GEMINI_API_KEY: str
 
     class Config:
         env_file = ".env"
 
+ 
 settings = Settings()

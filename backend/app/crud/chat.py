@@ -23,3 +23,13 @@ def create_chat_message(db: Session, user_id: int, chat_message: schemas.ChatMes
         db.rollback()
         # Optionally log the exception here
         return None
+
+def clear_chat_history(db: Session, user_id: int):
+    try:
+        db.query(models.ChatMessage).filter(models.ChatMessage.user_id == user_id).delete()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        # Optionally log the exception here
+        return False
+    return True    

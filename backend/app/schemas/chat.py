@@ -8,9 +8,10 @@ class ChatMessage(BaseModel):
     user_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
         from_attributes=True
 
+class ChatMessageCreateRequest(BaseModel):
+    content: str
 
 class ChatMessageResponse(BaseModel):
     message: ChatMessage                    
