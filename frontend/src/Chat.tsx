@@ -1,41 +1,51 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import VoiceChat from "./components/VoiceChat";
 import UserMessage from "./components/UserMessage";
 import BotMessage from "./components/BotMessage";
 import BotTyping from "./components/BotTyping";
 import QuickResponse from "./components/QuickResponse";
 import api from "./axios/api";
-import { Bot } from "lucide-react";
+import SettingsDropdown from "./components/SettingsDropdown";
+
+type Message = {
+    role: "user" | "bot";
+    content: string;
+};
 
 function Chat() {
     const [voiceActive, setVoiceActive] = useState(false);
-    const [showDropdown, setShowDropdown] = useState(false);
     const [inputMessage, setInputMessage] = useState("");
-    type Message = {
-        type: "user" | "bot";
-        message: string;
-    };
-
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        // Load initial messages if needed, e.g., from local storage or API
+        const fetchInitialMessages = async () => {
+            const initialMessages = await api.get("/chat/history");
+            if (initialMessages.data) {
+                setMessages(initialMessages.data.chat_history);
+            }
+        };
+        fetchInitialMessages();
+    }, []);
 
     const handleMessageSend = async (message: string) => {
         if (!message.trim()) return;
 
         // Add user message to the chat
-        setMessages((prev) => [...prev, { type: "user", message }]);
+        setMessages((prev) => [...prev, { role: "user", content: message }]);
         setIsLoading(true);
 
         try {
             // Send message to the backend
-            const response = await api.post("/chat", { content: message });
+            const response = await api.post("/chat", { content: message }, { timeout: 20000 });
             const botResponse = response.data?.bot_message.content || "Sorry, I didn't understand that.";
 
             // Add bot response to the chat
-            setMessages((prev) => [...prev, { type: "bot", message: botResponse }]);
+            setMessages((prev) => [...prev, { role: "bot", content: botResponse }]);
         } catch (error) {
             console.error("Error sending message:", error);
-            setMessages((prev) => [...prev, { type: "bot", message: "An error occurred while processing your message." }]);
+            setMessages((prev) => [...prev, { role: "bot", content: "An error occurred while processing your message." }]);
         } finally {
             setIsLoading(false);
         }
@@ -44,40 +54,7 @@ function Chat() {
     return (
 		<div className="flex flex-col min-h-screen">
             <div className="flex justify-end p-4 sticky top-0 z-10 bg-white/80 backdrop-blur">
-                <div className="relative">
-                    <button
-                        className={`w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110`}
-                        onClick={() => setShowDropdown((prev) => !prev)}
-                    >
-                        <span
-                            className={`material-symbols-outlined text-green-700 transition-transform duration-300 ${showDropdown ? "rotate-90" : ""}`}
-                        >
-                            settings
-                        </span>
-                    </button>
-                    {showDropdown && (
-                        <div className="absolute right-0 mt-2 w-40 bg-gray-100 border border-gray-300 rounded-xl shadow-lg z-20">
-                            <button
-                                className="w-full text-left px-4 py-2 hover:bg-gray-200 text-gray-800 rounded-t-xl"
-                                onClick={() => {
-                                    // Clear chat logic here
-                                    setShowDropdown(false);
-                                }}
-                            >
-                                Clear Chat
-                            </button>
-                            <button
-                                className="w-full text-left px-4 py-2 hover:bg-gray-200 text-gray-800 rounded-b-xl"
-                                onClick={() => {
-                                    // Logout logic here
-                                    setShowDropdown(false);
-                                }}
-                            >
-                                Logout
-                            </button>
-                        </div>
-                    )}
-                </div>
+               <SettingsDropdown setMessages={setMessages} />
             </div>
             <div className="flex-1 flex flex-col justify-start min-h-0 overflow-auto">
                 <div className="flex flex-col w-full max-w-4xl mx-auto">
@@ -85,12 +62,12 @@ function Chat() {
                         
                         return (
                             <>
-                                {messages.length === 0 && <QuickResponse />}
+                                {messages.length === 0 && <QuickResponse handleMessageSend={handleMessageSend} />}
                                 {messages.map((msg, idx) =>
-                                    msg.type === "user" ? (
-                                        <UserMessage key={idx} message={msg.message} />
+                                    msg.role === "user" ? (
+                                        <UserMessage key={idx} message={msg.content} />
                                     ) : (
-                                        <BotMessage key={idx} message={msg.message} />
+                                        <BotMessage key={idx} message={msg.content} />
                                     )
                                 )}
                                 {isLoading && <BotTyping />}
