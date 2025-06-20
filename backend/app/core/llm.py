@@ -1,40 +1,115 @@
-from google.generativeai import GenerativeModel
-import google.generativeai as genai
-from typing import List, Optional
-import os
-from app.core.config import settings
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationChain
+from langchain_community.chat_models import ChatOllama
+from typing import AsyncGenerator
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.runnables import Runnable
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
+import re
+import app.crud as crud
+from sqlalchemy.orm import Session
+import app.schemas as schemas
+import traceback
+import asyncio
 
-# Initialize the Gemini API client with the API key from settings
-genai.configure(api_key=settings.GEMINI_API_KEY)
+def get_langchain_chain(db: Session, user_id: int) -> RunnableWithMessageHistory:
+    
+    def load_history(session_id: str) -> BaseChatMessageHistory:
+        """Load chat history from database and return as BaseChatMessageHistory"""
+        history = crud.get_chat_history(db, user_id=user_id)
+        
+        messages: List[BaseMessage] = []
+        if history:
+            for msg in history:
+                try:
+                    parsed = schemas.ChatMessage.model_validate(msg)
+                    content = parsed.content
+                    role = parsed.role
+                except Exception as e:
+                    print(f"Error parsing message: {msg}, error: {e}")
+                    continue
 
-# Initialize the model (you can change model name if needed)
-model = GenerativeModel("gemma-3-27b-it")
+                if role == "user":
+                    messages.append(HumanMessage(content=content))
+                elif role in ["bot", "assistant"]:
+                    messages.append(AIMessage(content=content))
 
-# System prompt to guide chatbot personality
-SYSTEM_PROMPT = (
-    "You are a compassionate, non-judgmental mental health assistant. "
-    "You listen carefully, encourage self-awareness, and respond empathetically. "
-    "You do not give medical advice or diagnose conditions, but can suggest general coping strategies, mindfulness techniques, and supportive conversation."
-    "You should reply in Markdown format, using bullet points for lists and appropriate formatting for clarity."
-)
+        # Create InMemoryChatMessageHistory and populate it with messages
+        chat_history = InMemoryChatMessageHistory()
+        for message in messages:
+            chat_history.add_message(message)
+        
+        return chat_history
 
-def chat_with_mental_health_bot(user_input: str, history: Optional[List[dict]] = None) -> str:
+    # Setup the LangChain chain
+    llm = ChatOllama(model="llama3:latest", streaming=True)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", (
+            "You are a friendly, helpful, and knowledgeable human assistant. "
+            "You should never reveal that you are an AI, a language model, or how you were built. "
+            "Respond naturally and conversationally, as if you're a real person. "
+            "Avoid any overly robotic or technical language unless specifically asked. "
+            # "If someone asks about your origin, reply vaguely or steer the conversation elsewhere."
+        )),
+        MessagesPlaceholder(variable_name="history"),
+        ("human", "{input}")
+    ])
+    base_chain = prompt | llm
+
+    return RunnableWithMessageHistory(
+        base_chain,
+        load_history,
+        input_messages_key="input",
+        history_messages_key="history"
+    )
+
+async def stream_bot_response(
+    content: str,
+    chain: Runnable,
+    session_id: str,
+    cancel_event: asyncio.Event = None
+) -> AsyncGenerator[str, None]:
     """
-    Send a prompt to the Gemini mental health chatbot.
-
-    Args:
-        user_input (str): The user's message.
-        history (Optional[List[dict]]): Optional conversation history in format:
-            [{"role": "user", "parts": ["Hi"]}, {"role": "model", "parts": ["Hello, how can I support you today?"]}]
-
-    Returns:
-        str: Model response.
+    Streams the chatbot response with detailed debugging.
     """
-    # Format chat history
-    chat = model.start_chat(history=history or [])
-
     try:
-        response = chat.send_message(user_input)
-        return response.text
+        print(f"Starting stream for session: {session_id}")
+        print(f"Input content: {content}")
+        print(f"Chain type: {type(chain)}")
+        
+        # Test the chain configuration
+        config = {"configurable": {"session_id": session_id}}
+        input_data = {"input": content}
+        
+        print(f"Config: {config}")
+        print(f"Input data: {input_data}")
+        
+        # Try streaming
+        chunk_count = 0
+        async for chunk in chain.astream(input_data, config=config):
+            if cancel_event and cancel_event.is_set():
+                print("Stream cancelled")
+                yield "[Stream cancelled]"
+                return
+            chunk_count += 1
+            # Handle different chunk types
+            if isinstance(chunk, str):
+                token = chunk
+            elif hasattr(chunk, 'content'):
+                token = str(chunk.content) if chunk.content else ""
+            elif isinstance(chunk, dict):
+                # Handle dict responses
+                token = chunk.get('content', '') or chunk.get('output', '') or str(chunk)
+            else:
+                token = str(chunk)
+            
+            if token:
+                yield token
+            
+
     except Exception as e:
-        return f"Error communicating with Gemini: {str(e)}"
+        error_msg = f"Stream error: {str(e)}"
+        print(f"Full traceback: {traceback.format_exc()}")
+        yield f"[Error: {error_msg}]"

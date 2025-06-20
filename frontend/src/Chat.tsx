@@ -24,6 +24,7 @@ function Chat() {
         const fetchInitialMessages = async () => {
             const initialMessages = await api.get("/chat/history");
             if (initialMessages.data) {
+                console.log("Initial messages loaded:", initialMessages.data.chat_history);
                 setMessages(initialMessages.data.chat_history);
             }
         };
@@ -46,10 +47,24 @@ function Chat() {
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.role === "bot") {
-                setMessages((prev) => [...prev, { role: "bot", content: data.content }]);
-                setIsLoading(false);
+            setMessages((prev) => {
+                // If last message is from bot, append content; else, add new bot message
+                if (prev.length > 0 && prev[prev.length - 1].role === "bot") {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                    ...updated[updated.length - 1],
+                    content: updated[updated.length - 1].content + data.content,
+                };
+                return updated;
+                } else {
+                return [...prev, { role: "bot", content: data.content }];
+                }
+            });
+            setIsLoading(false);
             }
         };
+
+  
 
         socket.onerror = (error) => {
             console.error("WebSocket error:", error);
