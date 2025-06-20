@@ -1,4 +1,3 @@
-import React from 'react'
 import api from './axios/api';
 
 function LandingPage() {

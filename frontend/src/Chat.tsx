@@ -6,6 +6,7 @@ import BotTyping from "./components/BotTyping";
 import QuickResponse from "./components/QuickResponse";
 import api from "./axios/api";
 import SettingsDropdown from "./components/SettingsDropdown";
+import { useRef } from "react";
 
 type Message = {
     role: "user" | "bot";
@@ -29,27 +30,65 @@ function Chat() {
         fetchInitialMessages();
     }, []);
 
-    const handleMessageSend = async (message: string) => {
-        if (!message.trim()) return;
+    // Store WebSocket instance in a ref to persist across renders
+    const socketRef = useRef<WebSocket | null>(null);
 
-        // Add user message to the chat
+    // Helper to connect/reconnect websocket
+    const connectWebSocket = () => {
+        const accessToken = localStorage.getItem("access_token");
+        const socket = new WebSocket(`ws://localhost:8000/chat/ws/chat?access_token=${encodeURIComponent(accessToken || "")}`);
+        socketRef.current = socket;
+
+        socket.onopen = () => {
+            console.log("WebSocket connection established");
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.role === "bot") {
+                setMessages((prev) => [...prev, { role: "bot", content: data.content }]);
+                setIsLoading(false);
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+
+        socket.onclose = () => {
+            console.log("WebSocket connection closed, attempting to reconnect...");
+            // Try to reconnect after a delay
+            setTimeout(() => {
+                connectWebSocket();
+            }, 2000);
+        };
+    };
+
+    // useEffect to handle chat websocket connection
+    useEffect(() => {
+        connectWebSocket();
+        return () => {
+            socketRef.current?.close();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Function to handle sending messages to bot via websocket
+    const handleMessageSend = (message: string) => {
+        if (!message.trim()) return; // Prevent sending empty messages
+
         setMessages((prev) => [...prev, { role: "user", content: message }]);
+        setInputMessage("");
         setIsLoading(true);
 
-        try {
-            // Send message to the backend
-            const response = await api.post("/chat", { content: message }, { timeout: 20000 });
-            const botResponse = response.data?.bot_message.content || "Sorry, I didn't understand that.";
-
-            // Add bot response to the chat
-            setMessages((prev) => [...prev, { role: "bot", content: botResponse }]);
-        } catch (error) {
-            console.error("Error sending message:", error);
-            setMessages((prev) => [...prev, { role: "bot", content: "An error occurred while processing your message." }]);
-        } finally {
+        // Use the existing WebSocket connection
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({ role: "user", content: message }));
+        } else {
             setIsLoading(false);
+            console.error("WebSocket is not connected.");
         }
-    }
+    };
     
     return (
 		<div className="flex flex-col min-h-screen">

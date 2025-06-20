@@ -1,4 +1,3 @@
-import React from 'react'
 
 interface QuickResponseProps {
     handleMessageSend: (message: string) => void;
