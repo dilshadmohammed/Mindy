@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import api from './axios/api';
 
 function LandingPage() {
@@ -15,9 +16,6 @@ function LandingPage() {
 		}
 	};
 
-	const handleDemoClick = () => {
-		alert('Demo feature coming soon!');
-	};
 
   return (
 	<div className="w-full min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
@@ -27,7 +25,7 @@ function LandingPage() {
 	        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
 	          <span className="material-symbols-outlined text-white text-xl">psychology</span>
 	        </div>
-	        <span className="text-2xl font-bold text-green-800">MindBot</span>
+	        <span className="text-2xl font-bold text-green-800">MindyBot</span>
 	      </div>
 	      <div className="hidden md:flex items-center space-x-8">
 	        <a href="#features" className="text-green-700 hover:text-green-900 transition-colors duration-200">Features</a>
@@ -67,12 +65,12 @@ function LandingPage() {
 						<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" alt="Google" className="w-6 h-6" />
 						<span className="text-gray-700 font-semibold group-hover:text-green-700 transition-colors duration-200">Continue with Google</span>
 					</button>
-                    <button className="w-full md:w-auto group bg-green-500 border-2 border-green-500 rounded-xl px-8 py-4 flex items-center justify-center space-x-3 text-white font-semibold hover:bg-green-600 hover:border-green-600 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-						onClick={handleDemoClick}
+					<Link className="w-full md:w-auto group bg-green-500 border-2 border-green-500 rounded-xl px-8 py-4 flex items-center justify-center space-x-3 text-white font-semibold hover:bg-green-600 hover:border-green-600 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+						to={'/demo-chat'}
 					>
-                        <span className="material-symbols-outlined">play_circle</span>
-                        <span>Try Demo</span>
-                    </button>
+						<span className="material-symbols-outlined">play_circle</span>
+						<span>Try Demo</span>
+					</Link>
                 </div>
                 <div className="flex items-center space-x-4 text-sm text-green-600">
                     <div className="flex items-center space-x-1">
@@ -109,7 +107,7 @@ function LandingPage() {
 	                <span className="material-symbols-outlined text-white">smart_toy</span>
 	              </div>
 	              <div>
-	                <div className="font-semibold text-green-900">MindBot Assistant</div>
+	                <div className="font-semibold text-green-900">MindyBot Assistant</div>
 	                <div className="text-sm text-green-600">Online now</div>
 	              </div>
 	            </div>
@@ -152,7 +150,7 @@ function LandingPage() {
 	
 	    <section id="features" className="py-20">
 	      <div className="text-center mb-16">
-	        <h2 className="text-4xl font-bold text-green-900 mb-4">Why Choose MindBot?</h2>
+	        <h2 className="text-4xl font-bold text-green-900 mb-4">Why Choose MindyBot?</h2>
 	        <p className="text-xl text-green-700 max-w-3xl mx-auto">
 	          Our AI-powered mental health companion provides personalized support when you need it most.
 	        </p>
@@ -227,7 +225,9 @@ function LandingPage() {
 	        <p className="text-xl text-green-100 mb-8 max-w-2xl mx-auto">
 	          Join thousands of users who have found support and guidance through MindBot. Your mental health matters.
 	        </p>
-	        <button className="bg-white text-green-600 font-bold px-8 py-4 rounded-xl hover:bg-green-50 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg inline-flex items-center space-x-3">
+	        <button className="bg-white text-green-600 font-bold px-8 py-4 rounded-xl hover:bg-green-50 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg inline-flex items-center space-x-3"
+				onClick={handleGoogleLogin}
+			>
 			  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" alt="Google" className="w-6 h-6" />
 	          <span>Get Started with Google</span>
 	        </button>
@@ -243,7 +243,7 @@ function LandingPage() {
 	            <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
 	              <span className="material-symbols-outlined text-white text-xl">psychology</span>
 	            </div>
-	            <span className="text-2xl font-bold">MindBot</span>
+	            <span className="text-2xl font-bold">MindyBot</span>
 	          </div>
 	          <p className="text-green-300">
 	            Your trusted AI companion for mental health support and guidance.
@@ -280,7 +280,7 @@ function LandingPage() {
 	
 	      <div className="border-t border-green-800 mt-12 pt-8 text-center">
 	        <p className="text-green-400">
-	          © 2024 MindBot. All rights reserved. Not a replacement for professional medical advice.
+	          © 2025 MindyBot. All rights reserved. Not a replacement for professional medical advice.
 	        </p>
 	      </div>
 	    </div>

@@ -31,7 +31,7 @@ api.interceptors.response.use(
         if (error.response && error.response.status === 401) {
             // Handle unauthorized access, e.g., redirect to login
             console.error('Unauthorized access - redirecting to login');
-            window.location.href = '/login'; // Adjust the path as needed
+            window.location.href = '/'; // Adjust the path as needed
         }
         return Promise.reject(error);
     }

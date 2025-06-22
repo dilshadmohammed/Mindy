@@ -47,7 +47,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <div>Loading...</div>; // or a spinner
   }
 
-  return isAllowed ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAllowed ? <>{children}</> : <Navigate to="/" replace />;
 };
 
 export default ProtectedRoute;
