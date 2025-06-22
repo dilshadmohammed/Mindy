@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LandingPage from "./LandingPage";
-import Chat from "./Chat";
+import LandingPage from "./pages/LandingPage";
+import Chat from "./pages/Chat";
 import OAuthCallback from "./components/OAuthCallback";
 import ProtectedRoute from "./components/ProtectedRoute";
-import DemoChat from "./DemoChat";
+import DemoChat from "./pages/DemoChat";
 
 function App() {
   return (

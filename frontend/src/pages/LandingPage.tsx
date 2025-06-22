@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import api from './axios/api';
+import api from '../axios/api';
 
 function LandingPage() {
 	const handleGoogleLogin = async () => {

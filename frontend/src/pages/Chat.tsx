@@ -1,30 +1,44 @@
 import { useEffect, useState } from "react";
-import VoiceChat from "./components/VoiceChat";
-import UserMessage from "./components/UserMessage";
-import BotMessage from "./components/BotMessage";
-import BotTyping from "./components/BotTyping";
-import QuickResponse from "./components/QuickResponse";
+import VoiceChat from "../components/VoiceChat";
+import UserMessage from "../components/UserMessage";
+import BotMessage from "../components/BotMessage";
+import BotTyping from "../components/BotTyping";
+import QuickResponse from "../components/QuickResponse";
+import api from "../axios/api";
+import SettingsDropdown from "../components/SettingsDropdown";
 import { useRef } from "react";
 
 type Message = {
     role: "user" | "bot";
     content: string;
-    datetime: string; // ISO string
+    datetime: string;
 };
 
-function DemoChat() {
+function Chat() {
     const [voiceActive, setVoiceActive] = useState(false);
     const [inputMessage, setInputMessage] = useState("");
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isStreaming, setIsStreaming] = useState(false);
+    useEffect(() => {
+        // Load initial messages if needed, e.g., from local storage or API
+        const fetchInitialMessages = async () => {
+            const initialMessages = await api.get("/chat/history");
+            if (initialMessages.data) {
+                console.log("Initial messages loaded:", initialMessages.data.chat_history);
+                setMessages(initialMessages.data.chat_history);
+            }
+        };
+        fetchInitialMessages();
+    }, []);
 
     // Store WebSocket instance in a ref to persist across renders
     const socketRef = useRef<WebSocket | null>(null);
 
     // Helper to connect/reconnect websocket
     const connectWebSocket = () => {
-        const socket = new WebSocket(`ws://localhost:8000/chat/ws/demo-chat`);
+        const accessToken = localStorage.getItem("access_token");
+        const socket = new WebSocket(`ws://localhost:8000/chat/ws/chat?access_token=${encodeURIComponent(accessToken || "")}`);
         socketRef.current = socket;
 
         socket.onopen = () => {
@@ -49,7 +63,7 @@ function DemoChat() {
                 };
                 return updated;
                 } else {
-                return [...prev, { role: "bot", content: data.content , datetime: new Date().toISOString() }];
+                return [...prev, { role: "bot", content: data.content, datetime: new Date().toISOString() }];
                 }
             });
             setIsLoading(false);
@@ -98,19 +112,22 @@ function DemoChat() {
     };
     
     return (
-		<div className="flex flex-col min-h-screen pt-16  bg-green-50">
+		<div className="flex flex-col min-h-screen bg-green-50">
+            <div className="flex justify-end p-4 sticky top-0 z-10 bg-green-50 backdrop-blur">
+               <SettingsDropdown setMessages={setMessages} />
+            </div>
             <div className="flex-1 flex flex-col justify-start min-h-0 overflow-auto">
                 <div className="flex flex-col w-full max-w-4xl mx-auto">
                     {(() => {
                         
                         return (
                             <>
-                                {messages.length === 0 && <div className="mt-28"><QuickResponse handleMessageSend={handleMessageSend} /></div>}
+                                {messages.length === 0 && <QuickResponse handleMessageSend={handleMessageSend} />}
                                 {messages.map((msg, idx) =>
                                     msg.role === "user" ? (
                                         <UserMessage key={idx} message={msg.content} date={msg.datetime} />
                                     ) : (
-                                        <BotMessage key={idx} message={msg.content} date={msg.datetime}/>
+                                        <BotMessage key={idx} message={msg.content} date={msg.datetime} />
                                     )
                                 )}
                                 {isLoading && <BotTyping />}
@@ -181,4 +198,4 @@ function DemoChat() {
 	)
 }
 
-export default DemoChat
+export default Chat
