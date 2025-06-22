@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, DateTime
 from app.db.base import Base
 
 class ChatMessage(Base):
@@ -8,3 +8,4 @@ class ChatMessage(Base):
     role = Column(String, nullable=False) 
     content = Column(String, nullable=False) 
     user_id = Column(Integer, nullable=False)
+    datetime = Column(DateTime, nullable=False) 

@@ -7,3 +7,7 @@ venv/
 
 # Ignore environment file
 .env
+
+.chroma_store/
+
+.dbsqlite.db
